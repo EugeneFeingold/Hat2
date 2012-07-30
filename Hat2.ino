@@ -44,6 +44,10 @@ void setup() {
   pinMode(button1Pin, INPUT);
   pinMode(led1Pin, OUTPUT);
 
+
+  digitalWrite(led1Pin, LOW);
+
+
   //init modes
   modes[0] = new HMRainbow(&strip, &settings);
   modes[1] = new HMSolid(&strip, &settings);
@@ -53,12 +57,8 @@ void setup() {
   //init Settings
   //Settings().setBrightness(0.0);
 
-  for (int i = 0; i < NUM_MODES; i++) {
-    modes[i]->init();
-  }
-
-
   strip.begin();
+  reset();
 
   Serial.begin(57600);
 }
@@ -69,25 +69,35 @@ void loop() {
 
   if (btn1State == 0 && b == HIGH) {
     btn1State = 1;
-    digitalWrite(led1Pin, HIGH);
+    digitalWrite(led1Pin, LOW);
 
     mode++;
     if (mode >= NUM_MODES) {
       mode = 0;
     }
 
+    reset();
     modes[mode]->init(); 
 
   } 
   else if (btn1State == 1 && b == LOW) {
     btn1State = 0;
-    digitalWrite(led1Pin, LOW);
+    digitalWrite(led1Pin, HIGH);
   }
 
   settings.brightness = analogRead(brightnessPin) / 1024.0;
 
   modes[mode]->loop();
 
+}
+
+
+
+void reset() {
+  for (int i = 0; i < NUM_LIGHTS; i++) {
+    strip.setPixelColor(i, 0);
+  }
+  strip.show();
 }
 
 

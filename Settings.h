@@ -4,16 +4,17 @@
 
 
 class Settings {
-  public:  
-    Settings();
+public:  
+  Settings();
 
-    float brightness;
-    float rate;
+  float brightness;
+  float rate;
 
-    
-  private:
-  
-  
+
+private:
+
+
 };
 
 #endif
+

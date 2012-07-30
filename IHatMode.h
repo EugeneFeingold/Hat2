@@ -1,4 +1,4 @@
-
+#pragma once
 #ifndef inclIHatMode
 
 #define inclIHatMode 0
@@ -10,18 +10,20 @@
 
 class IHatMode
 {
-    public:
-        
-        virtual ~IHatMode() {}
-                
-        virtual void init() = 0;
-        virtual void loop() = 0;
-    
-   protected:
-      LPD8806* strip; 
-      Settings* settings;  
-        
+public:
+
+  virtual ~IHatMode() {
+  }
+
+  virtual void init() = 0;
+  virtual void loop() = 0;
+
+protected:
+  LPD8806* strip; 
+  Settings* settings;  
+
 };
 
 
 #endif
+

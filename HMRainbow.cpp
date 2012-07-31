@@ -5,14 +5,11 @@
 
 
 
-HMRainbow::HMRainbow(LPD8806 *strip, Settings *settings) {
-  this->strip = strip;
-  this->settings = settings;
-};
+HMRainbow::HMRainbow() {};
 
-
-void HMRainbow::init() {
+void HMRainbow::init(LPD8806 *strip, Settings *settings) {
   j = 0;
+  super::init(strip, settings);
 };
 
 

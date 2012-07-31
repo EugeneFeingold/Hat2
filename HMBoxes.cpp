@@ -23,16 +23,12 @@ static int pattern[6][BOXES_WIDTH] = {
 };
 
 
-HMBoxes::HMBoxes(LPD8806 *strip, Settings *settings) {
-  this->strip = strip;
-  this->settings = settings;
-};
 
 
 
-
-void HMBoxes::init() {
+void HMBoxes::init(LPD8806 *strip, Settings *settings) {
   j = BOXES_WIDTH * 10;
+  super::init(strip, settings);
 };
 
 

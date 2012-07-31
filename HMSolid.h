@@ -1,9 +1,9 @@
-#include "IHatMode.h"
+#include "HM_Base.h"
 #include "LPD8806.h"
 
-class HMSolid : public IHatMode {
+class HMSolid : public HM_Base {
 public:
-  HMSolid(LPD8806 *strip, Settings *settings);
+  HMSolid();
 
   void init();
   void loop();

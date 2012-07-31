@@ -29,7 +29,7 @@ LPD8806 strip = LPD8806(NUM_LIGHTS, dataPin, clockPin);
 Settings settings = Settings();
 
 
-IHatMode *modes[NUM_MODES];
+HM_Base *modes[NUM_MODES];
 
 
 int btn1State = 0;
@@ -49,9 +49,9 @@ void setup() {
 
 
   //init modes
-  modes[0] = new HMRainbow(&strip, &settings);
-  modes[1] = new HMSolid(&strip, &settings);
-  modes[2] = new HMBoxes(&strip, &settings);
+  modes[0] = new HMRainbow();
+  modes[1] = new HMSolid();
+  modes[2] = new HMBoxes();
 
 
   //init Settings
@@ -77,7 +77,7 @@ void loop() {
     }
 
     reset();
-    modes[mode]->init(); 
+    modes[mode]->init(&strip, &settings); 
 
   } 
   else if (btn1State == 1 && b == LOW) {

@@ -3,10 +3,7 @@
 #include "Settings.h"
 
 
-HMSolid::HMSolid(LPD8806 *strip, Settings *settings) {
-  this->strip = strip;
-  this->settings = settings;
-};
+HMSolid::HMSolid() {};
 
 
 void HMSolid::init() {

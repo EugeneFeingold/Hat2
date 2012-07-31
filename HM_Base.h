@@ -1,26 +1,30 @@
 #pragma once
 #ifndef inclIHatMode
 
-#define inclIHatMode 0
+#define inclIHatMode
 
 
 #include "LPD8806.h"
 #include "Settings.h"
 
 
-class IHatMode
+class HM_Base
 {
 public:
 
-  virtual ~IHatMode() {
+  virtual ~HM_Base() {
   }
 
-  virtual void init() = 0;
+  void init(LPD8806 *strip, Settings *settings);
   virtual void loop() = 0;
 
 protected:
   LPD8806* strip; 
-  Settings* settings;  
+  Settings* settings;
+
+
+  typedef HM_Base super;
+  
 
 };
 

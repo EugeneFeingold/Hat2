@@ -22,6 +22,7 @@ int led1Pin = 8;
 
 
 int brightnessPin = A0;
+int ratePin = A1;
 int microphonePin = A5;
 
 
@@ -36,13 +37,15 @@ int btn1State = 0;
 int mode = 0;
 
 
-
-
-
 void setup() {
 
   pinMode(button1Pin, INPUT);
+  digitalWrite(button1Pin, HIGH); //enable pullup
+  
+  
   pinMode(led1Pin, OUTPUT);
+  
+
 
 
   digitalWrite(led1Pin, LOW);
@@ -59,6 +62,9 @@ void setup() {
 
   strip.begin();
   reset();
+  
+   modes[mode]->init(&strip, &settings);  
+
 
   Serial.begin(57600);
 }
@@ -70,27 +76,32 @@ void loop() {
   if (btn1State == 0 && b == HIGH) {
     btn1State = 1;
     digitalWrite(led1Pin, LOW);
-
-    mode++;
-    if (mode >= NUM_MODES) {
-      mode = 0;
-    }
-
-    reset();
-    modes[mode]->init(&strip, &settings); 
-
   } 
   else if (btn1State == 1 && b == LOW) {
+    incrementMode();
     btn1State = 0;
     digitalWrite(led1Pin, HIGH);
   }
 
   settings.brightness = analogRead(brightnessPin) / 1024.0;
+  settings.rate = analogRead(ratePin) / 1024.0;
+
+//Serial.println(settings.rate, DEC);
 
   modes[mode]->loop();
 
 }
 
+
+void incrementMode() {
+   mode++;
+    if (mode >= NUM_MODES) {
+      mode = 0;
+    }
+
+    reset();
+    modes[mode]->init(&strip, &settings);  
+}
 
 
 void reset() {

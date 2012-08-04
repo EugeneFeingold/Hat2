@@ -15,13 +15,13 @@ void HMRainbow::init(LPD8806 *strip, Settings *settings) {
 
 void HMRainbow::loop() {
   for (int i = 0; i < strip->numPixels(); i++) {
-    strip->setPixelColor(i, StripUtils().getWheelColor(settings->brightness, ((i * 128 / strip->numPixels()) + j) % 128));
+    strip->setPixelColor(i, StripUtils().getWheelColor(settings->brightness, ((i * 128 / strip->numPixels()) + (int)j) % 128));
   }
   strip->show();
 
 
 
-  j+=5;
+  j+= 16 - 16 * settings->rate;
   if (j > 128 * 5) {
     j = 0;
   }

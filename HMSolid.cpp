@@ -12,7 +12,7 @@ void HMSolid::init() {
 
 
 void HMSolid::loop() {
-  uint32_t c = StripUtils().getColor(settings->brightness, 127, 0, 0);
+  uint32_t c = StripUtils().getWheelColor(settings->brightness, 128 * settings -> rate);
 
   for (int i = 0; i < strip->numPixels(); i++) {
     strip->setPixelColor(i, c);

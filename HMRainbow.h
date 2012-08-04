@@ -11,7 +11,7 @@ public:
 
 
 private:
-  int j;
+  float j;
 
 };
 

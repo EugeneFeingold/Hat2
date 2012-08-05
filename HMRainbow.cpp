@@ -21,7 +21,7 @@ void HMRainbow::loop() {
 
 
 
-  j+= 16 - 16 * settings->rate;
+  j+= 16 - 32 * settings->rate;
   if (j > 128 * 5) {
     j = 0;
   }

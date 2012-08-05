@@ -17,6 +17,7 @@ public:
 
   void init(LPD8806 *strip, Settings *settings);
   virtual void loop() = 0;
+  void kill();
 
 protected:
   LPD8806* strip; 

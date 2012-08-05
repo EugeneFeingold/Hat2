@@ -49,7 +49,6 @@ float StripUtils::fscale( float originalMin, float originalMax, float newBegin, 
   float newRange = 0;
   float zeroRefCurVal = 0;
   float normalizedCurVal = 0;
-  float rangedValue = 0;
 
   // Check for originalMin > originalMax  - the math for all other cases i.e. negative numbers seems to work out fine 
   if (originalMin > originalMax ) {

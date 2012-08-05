@@ -1,15 +1,16 @@
 #include "HM_Base.h"
 #include "LPD8806.h"
 
-class HMSolid : public HM_Base {
+class HMAudio : public HM_Base {
 public:
-  HMSolid();
+  HMAudio();
 
   void init(LPD8806 *strip, Settings *settings);
   void loop();
 
 
 private:
+
 
 
 };

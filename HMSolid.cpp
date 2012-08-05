@@ -6,7 +6,7 @@
 HMSolid::HMSolid() {};
 
 
-void HMSolid::init() {
+void HMSolid::init(LPD8806 *strip, Settings *settings) {
 
 };
 

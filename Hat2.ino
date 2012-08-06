@@ -7,16 +7,20 @@
 #include "LPD8806.h"
 
 #include "Settings.h"
+#include "Writer.h"
 
 #include "HMRainbow.h"
+#include "HMFullRainbow.h"
 #include "HMSolid.h"
 #include "HMBoxes.h"
 #include "HMAudio.h"
+#include "HMRandomSquares.h"
 
+#include "HMRandomStripes.h"
 
 
 #define NUM_LIGHTS 96
-#define NUM_MODES 4
+#define NUM_MODES 6
 
 //----------- PINS ----------- 
 int dataPin  = 2;    // Yellow wire on Adafruit Pixels
@@ -51,6 +55,7 @@ float maxima[NUM_BUCKETS];
 
 LPD8806 strip = LPD8806(NUM_LIGHTS, dataPin, clockPin);
 Settings settings = Settings();
+Writer writer = Writer();
 
 
 HM_Base *modes[NUM_MODES];
@@ -67,14 +72,16 @@ void setup() {
   
   
   pinMode(led1Pin, OUTPUT);
-  digitalWrite(led1Pin, LOW);
+  digitalWrite(led1Pin, HIGH);
 
 
   //init modes
   modes[0] = new HMRainbow();
-  modes[1] = new HMAudio();
-  modes[2] = new HMBoxes();
-  modes[3] = new HMSolid();
+  modes[1] = new HMFullRainbow();
+  modes[2] = new HMRandomSquares();
+  modes[3] = new HMRandomStripes();
+  modes[4] = new HMBoxes();
+  modes[5] = new HMSolid();
   
   strip.begin();
   reset();
@@ -82,7 +89,7 @@ void setup() {
   modes[mode]->init(&strip, &settings);  
 
 
-  adcInit();
+  //adcInit();
 
 
 
@@ -118,7 +125,8 @@ void incrementMode() {
     if (mode >= NUM_MODES) {
       mode = 0;
     }
-
+    
+    
     reset();
     modes[mode]->init(&strip, &settings);  
 }

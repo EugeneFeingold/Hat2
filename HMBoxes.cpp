@@ -41,7 +41,7 @@ void HMBoxes::loop() {
   }
   strip->show();
 
-  delay(50 * settings->rate);
+  delay(50 - 50 * settings->rate);
 
   j--;
   if (j < 0) {

@@ -1,0 +1,70 @@
+
+#include "Writer.h"
+#include "StripUtils.h"
+
+
+
+byte Writer::digits[10][5] = {
+  {
+    0x4,0xA,0xA,0xA,0x4  }
+  ,
+  {
+    0x4,0xC,0x4,0x4,0xE  }
+  ,
+  {
+    0x2,0x4,0x8,0xE,0x0  }
+  ,
+  {
+    0xE,0x2,0x4,0x2,0xE  }
+  ,
+  {
+    0xA,0xA,0xE,0x2,0x2  }
+  ,
+  {
+    0xE,0x8,0xE,0x2,0xE  }
+  ,
+  {
+    0xE,0x8,0xE,0xA,0xE  }
+  ,
+  {
+    0xE,0x2,0x4,0x8,0x8  }
+  ,
+  {
+    0xE,0xA,0xE,0xA,0xE  }
+  ,
+  {
+    0xE,0xA,0xE,0x2,0xE  }
+}
+;
+
+
+
+
+void Writer::write(LPD8806 *strip, Settings *settings, char text[], unsigned short length) {
+
+  for (int i = 0; i < strip->numPixels(); i++) {
+    strip->setPixelColor(i, 0);
+  }
+  strip->show();
+
+
+
+  for (int i = 0; i < length; i++) {
+    int d = text[i] - 48;
+    if (d >= 0 && d<= 9) {
+      for (int y = 0; y < 5; y++) {
+        byte line = digits[d][y];
+        for (int x = 0; x < 5; x++) {
+          if (line & 0x01 == 0x01) {
+            strip->setPixelColor(y * 18 + i * 5 + x, StripUtils().getColor(0x7F, 0, 0));
+          }
+          line = line >> 1;
+        }
+      }
+    }
+  }
+
+  strip->show();
+
+}
+

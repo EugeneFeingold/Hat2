@@ -39,6 +39,17 @@ uint32_t StripUtils::getWheelColor(float brightness, byte WheelPos)
 
 
 
+uint32_t StripUtils::getRandomColor(float brightness) {
+  return getColor(brightness, random(128), random(128), random(128));
+}
+
+uint32_t StripUtils::getRandomBalancedColor(float brightness) {
+  unsigned int r = random(128);
+  unsigned int g = random(128);
+  return getColor(brightness, r, g, 128-(r + g)/2);
+}
+
+
 
 
 

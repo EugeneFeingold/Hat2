@@ -13,6 +13,8 @@ uint32_t StripUtils::getColor(byte r, byte g, byte b) {
 
 
 uint32_t StripUtils::getColor(float brightness, byte r, byte g, byte b) {
+  brightness = min(brightness, 1.0);
+  
   float fr = brightness * r;
   float fg = brightness * g;
   float fb = brightness * b;

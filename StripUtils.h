@@ -16,7 +16,7 @@ public:
   uint32_t getRandomBalancedColor(float brightness);
 
 
-  static float fscale( float originalMin, float originalMax, float newBegin, float newEnd, float inputValue, float curve);
+  static float scaleValue( float originalMin, float originalMax, float newBegin, float newEnd, float inputValue, float curve);
 
 private: 
 

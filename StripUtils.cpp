@@ -26,6 +26,7 @@ uint32_t StripUtils::getColor(float brightness, byte r, byte g, byte b) {
 
 uint32_t StripUtils::getWheelColor(float brightness, byte WheelPos)
 {
+  WheelPos = WheelPos & 0x7F;
   if (WheelPos < 42) {
     return getColor(brightness, WheelPos * 3, 127 - WheelPos * 3, 0);
   } 

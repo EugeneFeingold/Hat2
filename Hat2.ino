@@ -11,7 +11,7 @@
 #include "Writer.h"
 
 #define NUM_LIGHTS 96
-#define NUM_MODES 7
+#define NUM_MODES 8
 
 //----------- PINS ----------- 
 int dataPin  = 2;    // Yellow wire on Adafruit Pixels
@@ -39,6 +39,7 @@ Writer writer = Writer();
 
 void (*modes[NUM_MODES][3])(void) = { 
   { &hmRainbowInit, &hmRainbowLoop, NULL } ,
+  { &hmSidewaysRainbowInit, &hmSidewaysRainbowLoop, NULL } ,
   { &hmAudioInit, &hmAudioLoop, &hmAudioShutdown}, 
   { &hmFullRainbowInit, &hmFullRainbowLoop, NULL },
   { &hmMatricesInit, &hmMatricesLoop, NULL },
@@ -50,6 +51,8 @@ void (*modes[NUM_MODES][3])(void) = {
 
 int btn1State = 0;
 int mode = 0;
+unsigned long m;
+
 
 
 void setup() {
@@ -105,6 +108,8 @@ void incrementMode() {
   if (modes[mode][0] != NULL) {
     modes[mode][0]();
   }
+  
+  m = 0;
 }
 
 
@@ -126,6 +131,7 @@ void reset() {
 
 //============ ============  common mode vars ============ ============ 
 
+
 int hmj;
 float hmk;
 
@@ -133,18 +139,45 @@ float hmk;
 //============ ============  Rainbow ============ ============ 
 
 void hmRainbowInit() {
-  hmj = 0;
+  hmk = 0;
 }
 
 void hmRainbowLoop() {
    for (int i = 0; i < strip.numPixels(); i++) {
-    strip.setPixelColor(i, StripUtils().getWheelColor(settings.brightness, ((i * 128 / strip.numPixels()) + (int)hmj) % 128));
+    strip.setPixelColor(i, StripUtils().getWheelColor(settings.brightness, ((i * 128 / strip.numPixels()) + (int)hmk) % 128));
   }
   strip.show();
 
-  hmj+= 16 - 32 * settings.rate;
-  if (hmj > 128 * 5) {
-    hmj = 0;
+  hmk += 16 - 32 * settings.rate;
+  if (hmk > 128 * 5) {
+    hmk = 0;
+  } 
+}
+
+//============ ============ Sideways Rainbow ============ ============ 
+
+void hmSidewaysRainbowInit() {
+  hmk = 0;
+}
+
+void hmSidewaysRainbowLoop() {
+ 
+  for (int x = 0; x < 18; x++) {
+     for (int y = 0; y < 5; y++) {
+       strip.setPixelColor(y * 18 + x, StripUtils().getWheelColor(settings.brightness, (x * 5 + y) * 128 / strip.numPixels() + (int)hmk));
+     } 
+   }
+  /*
+   for (int i = 0; i < strip.numPixels(); i++) {
+    strip.setPixelColor(i, StripUtils().getWheelColor(settings.brightness, ((i * 128 / strip.numPixels()) + (int)hmk) % 128));
+  }
+  */
+  
+  strip.show();
+
+  hmk += 8 - 16 * settings.rate;
+  if (hmk > 128 * 5) {
+    hmk = 0;
   } 
 }
 
@@ -183,6 +216,10 @@ void hmMatricesInit() {
 }
 
 void hmMatricesLoop() {
+  if (millis() < m + 50 - 50 * settings.rate) {
+    return;
+  }
+  
   uint32_t c = StripUtils().getColor(settings.brightness, 127, 0, 0);
 
   for (int i = 0; i < strip.numPixels(); i++) {
@@ -191,18 +228,22 @@ void hmMatricesLoop() {
   }
   strip.show();
 
-  delay(50 - 50 * settings.rate);
-
   hmj--;
   if (hmj < 0) {
     hmj = MATRIX_WIDTH * 10;
   }
+  
+  m = millis();
 }
 
 
 //============ ============  Random Squares ============ ============ 
 
 void hmRandomSquaresLoop() {
+  if (millis() < m + 1000 - settings.rate * 1000) {
+    return;
+  }
+  
   for (int x = 0; x < 18; x+=2) {
     for (int y = 0; y < 5; y+=2) {
       uint32_t col = StripUtils().getRandomBalancedColor(settings.brightness);
@@ -214,13 +255,16 @@ void hmRandomSquaresLoop() {
     }
   }
   strip.show();
-  delay(1000 - settings.rate * 1000);
+  m = millis();
 }
 
 
 //============ ============  Random Stripes ============ ============ 
 
 void hmRandomStripesLoop() {  
+  if (millis() < m + 1000 - settings.rate * 1000) {
+    return;
+  }
   for (int x = 0; x < 18; x++) {
     //uint32_t col = StripUtils().getRandomBalancedColor(settings -> brightness);
     uint32_t col = StripUtils().getWheelColor(settings.brightness, random(128));
@@ -228,8 +272,8 @@ void hmRandomStripesLoop() {
       strip.setPixelColor(y * 18 + x, col);
     }
   }
-  strip.show();
-  delay(1000 - settings.rate * 1000);
+  strip.show();  
+  m = millis();
 }
 
 
@@ -259,22 +303,19 @@ void hmSolidLoop() {
 
 int       x[N], fx[N];
  int      incomingByte; 
- int kraccums = 0, zlaccums = 0, snaccums = 0;
- int kraccumn = 0, zlaccumn = 0, snaccumn = 0;
 
- int sdvig = 32768; //DC bias of the ADC, approxim +2.5V. (kompensaciya post. sostavlyauschei).
- int minim = 0; 
- int maxim = 4000; //32000; 
+
+ int sdvig = 32768; //DC bias of the ADC, approxim +2.5V. 
+ int minimum = 0; 
+ int maximum = 1000; //32000; 
  int vrem;
- float kdmp = 0.95;  //Smoothing constant. 
- float kary = 0.999;  //AGC time constant. 
+const float smoothing = 0.95;  //Smoothing constant. 
+const float decay = 0.9;  //AGC time constant. 
                       //AGC affects visual display only, no AGC on analog part of the system
 
 
 void hmAudioInit() {
-  Serial.println(ADMUX, HEX);
   
-
 }
 
 void hmAudioLoop() {
@@ -319,18 +360,44 @@ void hmAudioLoop() {
    fix_fftr( fx, log2N );
 
  // Calculation of the magnitude:
-   for (i=0; i<N/2; i++)
-   {
-     fx[i] = sqrt((long)fx[i] * (long)fx[i] + (long)fx[i+N/2] * (long)fx[i+N/2]);
+   // calcMagnitude(N/2);
+   
+   hmAudioEffect2();
+}
+
+void calcMagnitude(short n) {
+  maximum *= decay;
+  for (short i = 0; i < n; i++) {
+     fx[i] = sqrt((long)fx[i] * (long)fx[i] + (long)fx[i+N/2] * (long)fx[i+N/2]);   
+     maximum = max(maximum, fx[i]);
    }
-   
-   
-   for (i = 0; i < 18; i ++) {
-     strip.setPixelColor(i, StripUtils().getColor(map(fx[i], minim, maxim, 0, 127), 0, 0));
+}
+
+void hmAudioEffect1() {
+   calcMagnitude(18);
+ 
+   for (short i = 0; i < 18; i++) {
+     for (short y = 0; y < 5; y++) {
+       strip.setPixelColor(i + y * 18, StripUtils().getColor(settings.brightness, (fx[i]/(5-y) > maximum/5 ? 127 : 0), 0, 0));
+     }
    }
    strip.show();
-
 }
+
+
+void hmAudioEffect2() {
+  calcMagnitude(5);
+ 
+   for (short i = 0; i < 18; i++) {
+     for (short y = 0; y < 5; y++) {
+       strip.setPixelColor(i + y * 18, StripUtils().getColor(settings.brightness, (fx[i % 4 + 1]/(5-y) > maximum/5 ? 127 : 0), 0, 0));
+     }
+   }
+   strip.show(); 
+  
+}
+
+
 
 
 

@@ -54,63 +54,18 @@ uint32_t StripUtils::getRandomBalancedColor(float brightness) {
 
 
 
-
-
-
-float StripUtils::fscale( float originalMin, float originalMax, float newBegin, float newEnd, float inputValue, float curve){
-
-  float originalRange = 0;
-  float newRange = 0;
-  float zeroRefCurVal = 0;
-  float normalizedCurVal = 0;
-
-  // Check for originalMin > originalMax  - the math for all other cases i.e. negative numbers seems to work out fine 
-  if (originalMin > originalMax ) {
-    return 0;
-  }
-
-  // condition curve parameter
-  // limit range
-
-  if (curve > 10) curve = 10;
-  if (curve < -10) curve = -10;
-
-  curve = (curve * -.1) ; // - invert and scale - this seems more intuitive - postive numbers give more weight to high end on output 
-  curve = pow(10, curve); // convert linear scale into lograthimic exponent for other pow function
-
-  /*
-   Serial.println(curve * 100, DEC);   // multply by 100 to preserve resolution  
-   Serial.println(); 
-   */
-
-  // Check for out of range inputValues
-  if (inputValue < originalMin) {
-    inputValue = originalMin;
-  }
-  if (inputValue > originalMax) {
-    inputValue = originalMax;
-  }
-
-  // Zero Reference the values
-  originalRange = originalMax - originalMin;
-  newRange = newEnd - newBegin;
-
-  zeroRefCurVal = inputValue - originalMin;
-  normalizedCurVal  =  zeroRefCurVal / originalRange;   // normalize to 0 - 1 float
-
-  /*
-  Serial.print(originalRange, DEC);  
-   Serial.print("   ");  
-   Serial.print(newRange, DEC);  
-   Serial.print("   ");  
-   Serial.println(zeroRefCurVal, DEC);  
-   Serial.println();  
-   */
-
-
-  return newBegin + pow(normalizedCurVal, curve) * newRange;
+uint32_t StripUtils::getIntermediateColor(uint32_t first, uint32_t second, float frac) {
+  //color order is grb
+  uint8_t r1 = first >> 8;
+  uint8_t g1 = first >> 16;
+  uint8_t b1 = first ;
+  
+  uint8_t r2 = second >> 8;
+  uint8_t g2 = second >> 16;
+  uint8_t b2 = second;
+    
+  return getColor(r1 + (r2 - r1) * frac, g1 + (g2 - g1) * frac, b1 + (b2 - b1) * frac);
 }
-
 
 
 

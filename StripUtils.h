@@ -13,10 +13,10 @@ public:
 
   static uint32_t getWheelColor(float brightness, byte WheelPos);
   static uint32_t getRandomColor(float brightness);
-  uint32_t getRandomBalancedColor(float brightness);
+  static uint32_t getRandomBalancedColor(float brightness);
 
+  static uint32_t getIntermediateColor(uint32_t first, uint32_t second, float frac);
 
-  static float scaleValue( float originalMin, float originalMax, float newBegin, float newEnd, float inputValue, float curve);
 
 private: 
 

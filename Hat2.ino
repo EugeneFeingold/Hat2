@@ -5,6 +5,7 @@
 
 #include "SPI.h"
 #include "LPD8806.h"
+#include "Encoder.h"
 
 #include "Settings.h"
 #include "StripUtils.h"
@@ -14,16 +15,20 @@
 #define NUM_MODES 8
 
 //----------- PINS ----------- 
-int dataPin  = 2;    // Yellow wire on Adafruit Pixels
-int clockPin = 3;    // Green wire on Adafruit Pixels
 
-int button1Pin = 9;
-int led1Pin = 8;
+short encPinA = 2;
+short encPinB = 3;
+
+short dataPin  = 4;    // Yellow wire on Adafruit Pixels
+short clockPin = 5;    // Green wire on Adafruit Pixels
+
+short button1Pin = 9;
+short led1Pin = 8;
 
 
-int brightnessPin = A0;
-int ratePin = A1;
-int microphonePin = A5;
+short brightnessPin = A0;
+short ratePin = A1;
+short microphonePin = A5;
 
 
 
@@ -34,13 +39,16 @@ LPD8806 strip = LPD8806(NUM_LIGHTS, dataPin, clockPin);
 Settings settings = Settings();
 Writer writer = Writer();
 
+Encoder modeEnc(encPinA, encPinB);
+
+
 
 //  init - loop - shutdown
 
 void (*modes[NUM_MODES][3])(void) = { 
+  { &hmAudioInit, &hmAudioLoop, &hmAudioShutdown}, 
   { &hmRainbowInit, &hmRainbowLoop, NULL } ,
   { &hmSidewaysRainbowInit, &hmSidewaysRainbowLoop, NULL } ,
-  { &hmAudioInit, &hmAudioLoop, &hmAudioShutdown}, 
   { &hmFullRainbowInit, &hmFullRainbowLoop, NULL },
   { &hmMatricesInit, &hmMatricesLoop, NULL },
   { NULL, &hmRandomSquaresLoop, NULL},
@@ -50,6 +58,9 @@ void (*modes[NUM_MODES][3])(void) = {
 
 
 int btn1State = 0;
+long oldModePos = -999;
+long modeTimer = 0;
+short modeDir = 0;
 int mode = 0;
 unsigned long m;
 
@@ -68,6 +79,8 @@ void setup() {
   if (modes[mode][0] != NULL) {
     modes[mode][0]();
   }
+  
+  oldModePos = modeEnc.read();
 
   Serial.begin(57600);
 }
@@ -75,13 +88,25 @@ void setup() {
 
 void loop() {
   int b = digitalRead(button1Pin);
+  long newModePos = modeEnc.read();
+  if (newModePos != oldModePos) {
+    modeDir = (newModePos > oldModePos) ? 1 : -1;
+    oldModePos = newModePos;
+    modeTimer = millis() + 200;
+  }
+  if (modeDir != 0 && modeTimer < millis()) {
+    incrementMode(modeDir);
+    modeTimer = 0;
+    modeDir = 0;
+  }
+
 
   if (btn1State == 0 && b == HIGH) {
     btn1State = 1;
     digitalWrite(led1Pin, LOW);
   } 
   else if (btn1State == 1 && b == LOW) {
-    incrementMode();
+    //incrementMode();
     btn1State = 0;
     digitalWrite(led1Pin, HIGH);
   }
@@ -93,14 +118,18 @@ void loop() {
 }
 
 
-void incrementMode() {
+void incrementMode(short dir) {
   if (modes[mode][2] != NULL) {
     modes[mode][2]();
   }
  
-  mode++;
+ Serial.println(mode);
+ 
+  mode+=dir;
   if (mode >= NUM_MODES) {
     mode = 0;
+  } else if (mode < 0) {
+    mode = NUM_MODES - 1;
   }
   
   reset();
@@ -111,6 +140,8 @@ void incrementMode() {
   
   m = 0;
 }
+
+
 
 
 void reset() {
@@ -167,12 +198,6 @@ void hmSidewaysRainbowLoop() {
        strip.setPixelColor(y * 18 + x, StripUtils().getWheelColor(settings.brightness, (x * 5 + y) * 128 / strip.numPixels() + (int)hmk));
      } 
    }
-  /*
-   for (int i = 0; i < strip.numPixels(); i++) {
-    strip.setPixelColor(i, StripUtils().getWheelColor(settings.brightness, ((i * 128 / strip.numPixels()) + (int)hmk) % 128));
-  }
-  */
-  
   strip.show();
 
   hmk += 8 - 16 * settings.rate;
@@ -203,12 +228,22 @@ void hmFullRainbowLoop() {
 //============ ============  Matrices ============ ============ 
 #define MATRIX_WIDTH 6
 
-static int matrixPattern[6][MATRIX_WIDTH] = {
+/*
+static int heartPattern[6][MATRIX_WIDTH] = {
   { 0, 1, 0, 1, 0, 0  },
   { 1, 1, 1, 1, 1, 0  },
   { 1, 1, 1, 1, 1, 0  },
   { 0, 1, 1, 1, 0, 0  },
   { 0, 0, 1, 0, 0, 0  }    
+};
+*/
+
+static int matrixPattern[6][MATRIX_WIDTH] = {
+  { 1, 0, 1, 0, 1, 0  },
+  { 0, 1, 0, 1, 0, 0  },
+  { 0, 0, 1, 0, 0, 0  },
+  { 0, 1, 0, 1, 0, 0  },
+  { 1, 0, 0, 0, 1, 0  }    
 };
 
 void hmMatricesInit() {
@@ -220,7 +255,7 @@ void hmMatricesLoop() {
     return;
   }
   
-  uint32_t c = StripUtils().getColor(settings.brightness, 127, 0, 0);
+  uint32_t c = StripUtils().getColor(settings.brightness, 127, 16, 0);
 
   for (int i = 0; i < strip.numPixels(); i++) {
     int p = i + hmj / 10;
@@ -292,6 +327,8 @@ void hmSolidLoop() {
 
 #define  IR_AUDIO  5 // ADC channel to capture
 
+#define BUCKETS 4
+
  #define N_WAVE          1024    /* full length of Sinewave[] */
  #define LOG2_N_WAVE     10      /* log2(N_WAVE) */
 
@@ -305,17 +342,24 @@ int       x[N], fx[N];
  int      incomingByte; 
 
 
- int sdvig = 32768; //DC bias of the ADC, approxim +2.5V. 
- int minimum = 0; 
- int maximum = 1000; //32000; 
- int vrem;
+int sdvig = 32768; //DC bias of the ADC, approxim +2.5V. 
+int minimum = 0; 
+//int maximum = 0; //32000; 
+int maxima[BUCKETS];
 const float smoothing = 0.95;  //Smoothing constant. 
-const float decay = 0.9;  //AGC time constant. 
+const float decay = 0.99;  //AGC time constant. 
                       //AGC affects visual display only, no AGC on analog part of the system
 
 
 void hmAudioInit() {
-  
+   ADCSRA = 0x87;
+
+   // turn on adc, freq = 1/128 , 125 kHz.  
+   //ADMUX = 0x60 | IR_AUDIO;
+   ADMUX = _BV(REFS0) | IR_AUDIO | _BV(ADLAR); 
+   //Bit 5 – ADLAR: ADC Left Adjust Result
+   
+   ADCSRA |= (1<<ADSC);
 }
 
 void hmAudioLoop() {
@@ -325,13 +369,6 @@ void hmAudioLoop() {
  // 14.6 msec for ADC and 12.4 msec everything else, TOTAL = 27 msec if FFT size = 64 (N=128).
  // 28.8 msec for ADC and 27.1 msec everything else, TOTAL = 55.9 msec if FFT size = 128 (N).
 
-   ADCSRA = 0x87;
-   // turn on adc, freq = 1/128 , 125 kHz.  
-   //ADMUX = 0x60 | IR_AUDIO;
-   ADMUX = _BV(REFS0) | IR_AUDIO | _BV(ADLAR); 
-   //Bit 5 – ADLAR: ADC Left Adjust Result
-   
-   ADCSRA |= (1<<ADSC);
    //    while((ADCSRA&(1<<ADIF)) == 0); //Discard first conversion result.
    while(!(ADCSRA & 0x10));
 
@@ -344,7 +381,6 @@ void hmAudioLoop() {
      x[i] += (ADCH << 8);  
    }  
 
-   ADCSRA = 0x00;
 
    for (i=0; i<N; i++){
      x[i] -=  sdvig;
@@ -357,7 +393,7 @@ void hmAudioLoop() {
  //Performing FFT, getting fx[] array, where each element represents
  //frequency bin with width 65 Hz.
 
-   fix_fftr( fx, log2N );
+   Serial.println( fix_fftr( fx, log2N ), DEC);
 
  // Calculation of the magnitude:
    // calcMagnitude(N/2);
@@ -366,11 +402,17 @@ void hmAudioLoop() {
 }
 
 void calcMagnitude(short n) {
-  maximum *= decay;
+  //maximum *= decay;
   for (short i = 0; i < n; i++) {
      fx[i] = sqrt((long)fx[i] * (long)fx[i] + (long)fx[i+N/2] * (long)fx[i+N/2]);   
-     maximum = max(maximum, fx[i]);
+     //maximum = max(50, max(maximum, fx[i]));
+     maxima[i] = max(5, max((int)(maxima[i] * decay), fx[i]));
+     Serial.print(maxima[i], DEC);
+     Serial.print("/");
+     Serial.print(fx[i], DEC);
+     Serial.print("----");
    }
+   Serial.println();
 }
 
 void hmAudioEffect1() {
@@ -378,7 +420,7 @@ void hmAudioEffect1() {
  
    for (short i = 0; i < 18; i++) {
      for (short y = 0; y < 5; y++) {
-       strip.setPixelColor(i + y * 18, StripUtils().getColor(settings.brightness, (fx[i]/(5-y) > maximum/5 ? 127 : 0), 0, 0));
+       strip.setPixelColor(i + y * 18, StripUtils().getColor(settings.brightness, (fx[i]/(5-y) > maxima[y]/5 ? 127 : 0), 0, 0));
      }
    }
    strip.show();
@@ -386,17 +428,62 @@ void hmAudioEffect1() {
 
 
 void hmAudioEffect2() {
-  calcMagnitude(5);
+
+  calcMagnitude(BUCKETS + 1);
  
    for (short i = 0; i < 18; i++) {
+    /* Serial.print(fx[1], DEC);
+     Serial.print("-");
+     Serial.print(maxima[0]);*/
+     short ix = i % BUCKETS + 1;
+     int percentage = 100 * fx[ix] / maxima[ix];
+
      for (short y = 0; y < 5; y++) {
-       strip.setPixelColor(i + y * 18, StripUtils().getColor(settings.brightness, (fx[i % 4 + 1]/(5-y) > maximum/5 ? 127 : 0), 0, 0));
+       uint32_t col = percentage < y * 20 ? 0 : StripUtils().getWheelColor(settings.brightness, map(constrain(percentage, 0, (y + 1) * 20), 0, (y + 1) * 20, 90, 43));
+       col = StripUtils().getIntermediateColor(strip.getPixelColor(i + (5-y) * 18), col, 0.4);
+       strip.setPixelColor(i + (5-y) * 18, col);
      }
    }
    strip.show(); 
-  
 }
 
+
+
+void hmAudioEffect3() {
+
+  calcMagnitude(BUCKETS + 1);
+ 
+   for (short i = 0; i < 18; i++) {
+    /* Serial.print(fx[1], DEC);
+     Serial.print("-");
+     Serial.print(maxima[0]);*/
+     short ix = i % BUCKETS + 1;
+     int percentage = 100 * fx[ix] / maxima[ix];
+
+     for (short y = 0; y < 5; y++) {
+       uint32_t col = percentage < y * 20 ? 0 : StripUtils().getWheelColor(settings.brightness, map(constrain(percentage, 0, (y + 1) * 20), 0, (y + 1) * 20, 90, 43));
+       col = StripUtils().getIntermediateColor(strip.getPixelColor(i + (5-y) * 18), col, 0.4);
+       strip.setPixelColor(i + (5-y) * 18, col);
+     }
+   }
+   strip.show(); 
+}
+
+
+
+void hmAudioEffect4() {
+  calcMagnitude(BUCKETS);
+  
+  
+  for (short i = 0; i < strip.numPixels(); i++) { 
+    uint32_t col = StripUtils().getWheelColor(settings.brightness, map(fx[0] + fx[1] + fx[2] + fx[3], 0, 4 *maxima[i], 0, 128));
+
+    
+    strip.setPixelColor(i, col);
+  }
+  strip.show();
+  
+}
 
 
 

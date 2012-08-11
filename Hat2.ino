@@ -12,23 +12,24 @@
 #include "Writer.h"
 
 #define NUM_LIGHTS 96
-#define NUM_MODES 8
+#define NUM_MODES 7
+#define NUM_AUDIO_MODES 2
 
 //----------- PINS ----------- 
 
-short encPinA = 2;
-short encPinB = 3;
+const short encPinA = 2;
+const short encPinB = 3;
 
-short dataPin  = 4;    // Yellow wire on Adafruit Pixels
-short clockPin = 5;    // Green wire on Adafruit Pixels
+const short dataPin  = 4;    // Yellow wire on Adafruit Pixels
+const short clockPin = 5;    // Green wire on Adafruit Pixels
 
-short button1Pin = 9;
-short led1Pin = 8;
+const short button1Pin = 9;
+const short led1Pin = 8;
 
 
-short brightnessPin = A0;
-short ratePin = A1;
-short microphonePin = A5;
+const short brightnessPin = A0;
+const short ratePin = A1;
+const short microphonePin = A5;
 
 
 
@@ -46,7 +47,7 @@ Encoder modeEnc(encPinA, encPinB);
 //  init - loop - shutdown
 
 void (*modes[NUM_MODES][3])(void) = { 
-  { &hmAudioInit, &hmAudioLoop, &hmAudioShutdown}, 
+  //{ &hmAudioInit, &hmAudioLoop, &hmAudioShutdown}, 
   { &hmRainbowInit, &hmRainbowLoop, NULL } ,
   { &hmSidewaysRainbowInit, &hmSidewaysRainbowLoop, NULL } ,
   { &hmFullRainbowInit, &hmFullRainbowLoop, NULL },
@@ -56,11 +57,18 @@ void (*modes[NUM_MODES][3])(void) = {
   { NULL, &hmSolidLoop, NULL}
 };
 
+void (*audioModes[NUM_AUDIO_MODES])(void) = {
+  &hmAudioEffect2,
+  &hmAudioEffect3
+};
+
+
 
 int btn1State = 0;
 long oldModePos = -999;
 long modeTimer = 0;
 short modeDir = 0;
+boolean audioMode = false;
 int mode = 0;
 unsigned long m;
 
@@ -71,7 +79,7 @@ void setup() {
   digitalWrite(button1Pin, HIGH); //enable pullup
   
   pinMode(led1Pin, OUTPUT);
-  digitalWrite(led1Pin, HIGH);
+  digitalWrite(led1Pin, LOW);
   
   strip.begin();
   reset();
@@ -94,7 +102,11 @@ void loop() {
     oldModePos = newModePos;
     modeTimer = millis() + 200;
   }
-  if (modeDir != 0 && modeTimer < millis()) {
+  if (modeDir != 0) {
+    if (modeTimer > millis()) {
+      reset();
+      return;
+    }
     incrementMode(modeDir);
     modeTimer = 0;
     modeDir = 0;
@@ -103,38 +115,39 @@ void loop() {
 
   if (btn1State == 0 && b == HIGH) {
     btn1State = 1;
-    digitalWrite(led1Pin, LOW);
   } 
   else if (btn1State == 1 && b == LOW) {
-    //incrementMode();
+    audioMode = !audioMode;
+    audioMode ? hmAudioInit() : hmAudioShutdown();
+    mode = 0;
     btn1State = 0;
-    digitalWrite(led1Pin, HIGH);
+    digitalWrite(led1Pin, audioMode);
   }
 
   settings.brightness = analogRead(brightnessPin) / 1024.0;
   settings.rate = analogRead(ratePin) / 1024.0;
 
-  modes[mode][1]();
+  audioMode ? hmAudioLoop() : modes[mode][1]();
 }
 
 
 void incrementMode(short dir) {
-  if (modes[mode][2] != NULL) {
+  if (!audioMode && modes[mode][2] != NULL) {
     modes[mode][2]();
   }
  
  Serial.println(mode);
  
   mode+=dir;
-  if (mode >= NUM_MODES) {
+  if (mode >= (audioMode ? NUM_AUDIO_MODES : NUM_MODES)) {
     mode = 0;
   } else if (mode < 0) {
-    mode = NUM_MODES - 1;
+    mode = (audioMode ? NUM_AUDIO_MODES : NUM_MODES - 1);
   }
   
   reset();
   
-  if (modes[mode][0] != NULL) {
+  if (!audioMode && modes[mode][0] != NULL) {
     modes[mode][0]();
   }
   
@@ -339,15 +352,12 @@ void hmSolidLoop() {
 
 
 int       x[N], fx[N];
- int      incomingByte; 
+int      incomingByte; 
 
 
-int sdvig = 32768; //DC bias of the ADC, approxim +2.5V. 
-int minimum = 0; 
-//int maximum = 0; //32000; 
-int maxima[BUCKETS];
-const float smoothing = 0.95;  //Smoothing constant. 
-const float decay = 0.99;  //AGC time constant. 
+const int sdvig = 32768; //DC bias of the ADC, approxim +2.5V. 
+int maxima[BUCKETS] = {0,0,0,0};
+const float decay = 0.9;  //AGC time constant. 
                       //AGC affects visual display only, no AGC on analog part of the system
 
 
@@ -393,12 +403,12 @@ void hmAudioLoop() {
  //Performing FFT, getting fx[] array, where each element represents
  //frequency bin with width 65 Hz.
 
-   Serial.println( fix_fftr( fx, log2N ), DEC);
+    fix_fftr( fx, log2N );
 
  // Calculation of the magnitude:
    // calcMagnitude(N/2);
    
-   hmAudioEffect2();
+  audioModes[mode]();
 }
 
 void calcMagnitude(short n) {
@@ -406,13 +416,9 @@ void calcMagnitude(short n) {
   for (short i = 0; i < n; i++) {
      fx[i] = sqrt((long)fx[i] * (long)fx[i] + (long)fx[i+N/2] * (long)fx[i+N/2]);   
      //maximum = max(50, max(maximum, fx[i]));
-     maxima[i] = max(5, max((int)(maxima[i] * decay), fx[i]));
-     Serial.print(maxima[i], DEC);
-     Serial.print("/");
-     Serial.print(fx[i], DEC);
-     Serial.print("----");
+     maxima[i] = max(10, max((int)(maxima[i] * decay), fx[i]));
    }
-   Serial.println();
+  
 }
 
 void hmAudioEffect1() {
@@ -427,8 +433,15 @@ void hmAudioEffect1() {
 }
 
 
+
+
 void hmAudioEffect2() {
 
+  hmk+=  settings.rate;
+  if (hmk > 127) {
+    hmk = 0;
+  }
+  
   calcMagnitude(BUCKETS + 1);
  
    for (short i = 0; i < 18; i++) {
@@ -439,9 +452,9 @@ void hmAudioEffect2() {
      int percentage = 100 * fx[ix] / maxima[ix];
 
      for (short y = 0; y < 5; y++) {
-       uint32_t col = percentage < y * 20 ? 0 : StripUtils().getWheelColor(settings.brightness, map(constrain(percentage, 0, (y + 1) * 20), 0, (y + 1) * 20, 90, 43));
-       col = StripUtils().getIntermediateColor(strip.getPixelColor(i + (5-y) * 18), col, 0.4);
-       strip.setPixelColor(i + (5-y) * 18, col);
+       uint32_t col = percentage > (y * 20) ? 0 : StripUtils().getWheelColor(settings.brightness, map(constrain(percentage, 0, y * 20), 0, y * 20, hmk, hmk + 64));
+       col = StripUtils().getIntermediateColor(strip.getPixelColor(i + y * 18), col, 0.4);
+       strip.setPixelColor(i + y * 18, col);
      }
    }
    strip.show(); 
@@ -450,34 +463,13 @@ void hmAudioEffect2() {
 
 
 void hmAudioEffect3() {
-
-  calcMagnitude(BUCKETS + 1);
- 
-   for (short i = 0; i < 18; i++) {
-    /* Serial.print(fx[1], DEC);
-     Serial.print("-");
-     Serial.print(maxima[0]);*/
-     short ix = i % BUCKETS + 1;
-     int percentage = 100 * fx[ix] / maxima[ix];
-
-     for (short y = 0; y < 5; y++) {
-       uint32_t col = percentage < y * 20 ? 0 : StripUtils().getWheelColor(settings.brightness, map(constrain(percentage, 0, (y + 1) * 20), 0, (y + 1) * 20, 90, 43));
-       col = StripUtils().getIntermediateColor(strip.getPixelColor(i + (5-y) * 18), col, 0.4);
-       strip.setPixelColor(i + (5-y) * 18, col);
-     }
-   }
-   strip.show(); 
-}
-
-
-
-void hmAudioEffect4() {
   calcMagnitude(BUCKETS);
   
-  
-  for (short i = 0; i < strip.numPixels(); i++) { 
-    uint32_t col = StripUtils().getWheelColor(settings.brightness, map(fx[0] + fx[1] + fx[2] + fx[3], 0, 4 *maxima[i], 0, 128));
+  uint32_t col = StripUtils().getWheelColor(settings.brightness, map(fx[1] + fx[2], 0, maxima[1], 43, 128));
+  col = StripUtils().getIntermediateColor(strip.getPixelColor(0), col, 0.6);
 
+  for (short i = 0; i < strip.numPixels(); i++) { 
+    
     
     strip.setPixelColor(i, col);
   }

@@ -20,11 +20,11 @@
 const short encPinA = 2;
 const short encPinB = 3;
 
-const short dataPin  = 6;    // Yellow wire on Adafruit Pixels
+const short dataPin  = 6;    // white wire on Adafruit Pixels
 const short clockPin = 7;    // Green wire on Adafruit Pixels
 
-const short button1Pin = 9;
-const short led1Pin = 8;
+const short button1Pin = 12;
+const short led1Pin = 10;
 
 
 const short brightnessPin = A0;

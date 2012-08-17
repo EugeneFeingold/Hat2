@@ -12,7 +12,7 @@
 #include "Writer.h"
 
 #define NUM_LIGHTS 96
-#define NUM_MODES 7
+#define NUM_MODES 8
 #define NUM_AUDIO_MODES 2
 
 //----------- PINS ----------- 
@@ -54,6 +54,7 @@ void (*modes[NUM_MODES][3])(void) = {
   { &hmMatricesInit, &hmMatricesLoop, NULL },
   { NULL, &hmRandomSquaresLoop, NULL},
   { NULL, &hmRandomStripesLoop, NULL},
+  { &hmRotatingStripeInit, &hmRotatingStripeLoop, NULL},
   { NULL, &hmSolidLoop, NULL}
 };
 
@@ -177,7 +178,9 @@ void reset() {
 
 
 int hmj;
+int hmj1;
 float hmk;
+uint32_t hmcol;
 
 
 //============ ============  Rainbow ============ ============ 
@@ -336,6 +339,42 @@ void hmSolidLoop() {
 }
 
 
+
+//============ ============  Rotating Stripe ============ ============ 
+ 
+ void hmRotatingStripeInit() {
+   hmcol = StripUtils().getWheelColor(settings.brightness, 128 * settings.rate);
+   hmj = 0; 
+   hmj1 = 0;
+ }
+
+void hmRotatingStripeLoop() {
+  if (millis() < m + 1000 - settings.rate * 1000) {
+    return;
+  }
+  
+  if (hmj > 17) {
+    hmj = 0;
+  } else if (hmj < 0) {
+    hmj = 17;
+  }
+  if (hmj1 > 128) {
+    hmj1 = 0;
+  }
+  for (int i = 0; i < strip.numPixels(); i++) {
+    //strip.setPixelColor(i, (i % 18 == hmj) ? hmcol : 0);      
+    strip.setPixelColor(i, (i % 18 == hmj) ? StripUtils().getWheelColor(settings.brightness, hmj1) : StripUtils().getIntermediateColor(strip.getPixelColor(i), 0, 0.3));
+
+  }
+  strip.show();
+  hmj++;
+  hmj1++;
+  m = millis();
+
+}
+
+
+
 //============ ============  AUDIO ============ ============ 
 
 #define  IR_AUDIO  5 // ADC channel to capture
@@ -353,6 +392,7 @@ void hmSolidLoop() {
 
 int       x[N], fx[N];
 int      incomingByte; 
+
 
 
 const int sdvig = 32768; //DC bias of the ADC, approxim +2.5V. 
@@ -413,10 +453,13 @@ void hmAudioLoop() {
 
 void calcMagnitude(short n) {
   //maximum *= decay;
+  
+  int minMax = 50 * settings.rate;
+  
   for (short i = 0; i < n; i++) {
      fx[i] = sqrt((long)fx[i] * (long)fx[i] + (long)fx[i+N/2] * (long)fx[i+N/2]);   
      //maximum = max(50, max(maximum, fx[i]));
-     maxima[i] = max(10, max((int)(maxima[i] * decay), fx[i]));
+     maxima[i] = max(minMax, max((int)(maxima[i] * decay), fx[i]));
    }
   
 }

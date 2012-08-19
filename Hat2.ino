@@ -12,7 +12,6 @@
 #include "Writer.h"
 
 #define NUM_LIGHTS 96
-#define NUM_MODES 8
 #define NUM_AUDIO_MODES 2
 
 //----------- PINS ----------- 
@@ -44,6 +43,8 @@ Encoder modeEnc(encPinA, encPinB);
 
 
 
+#define NUM_MODES 10
+
 //  init - loop - shutdown
 
 void (*modes[NUM_MODES][3])(void) = { 
@@ -51,11 +52,14 @@ void (*modes[NUM_MODES][3])(void) = {
   { &hmRainbowInit, &hmRainbowLoop, NULL } ,
   { &hmSidewaysRainbowInit, &hmSidewaysRainbowLoop, NULL } ,
   { &hmFullRainbowInit, &hmFullRainbowLoop, NULL },
-  { &hmMatricesInit, &hmMatricesLoop, NULL },
   { NULL, &hmRandomSquaresLoop, NULL},
   { NULL, &hmRandomStripesLoop, NULL},
   { &hmRotatingStripeInit, &hmRotatingStripeLoop, NULL},
-  { NULL, &hmSolidLoop, NULL}
+  { NULL, &hmSolidLoop, NULL},
+  { NULL, &hmWhiteSparkleLoop, NULL},
+  { NULL, &hmSparkleLoop, NULL},
+  { &hmMatricesInit, &hmMatricesLoop, NULL }
+
 };
 
 void (*audioModes[NUM_AUDIO_MODES])(void) = {
@@ -96,7 +100,6 @@ void setup() {
 
 
 void loop() {
-  int b = digitalRead(button1Pin);
   long newModePos = modeEnc.read();
   if (newModePos != oldModePos) {
     modeDir = (newModePos > oldModePos) ? 1 : -1;
@@ -113,6 +116,7 @@ void loop() {
     modeDir = 0;
   }
 
+  int b = digitalRead(button1Pin);
 
   if (btn1State == 0 && b == HIGH) {
     btn1State = 1;
@@ -374,10 +378,54 @@ void hmRotatingStripeLoop() {
 }
 
 
+//============ ============ White Sparkle ============ ============ 
+
+void hmWhiteSparkleLoop() {
+  if (millis() < m + 1000 - settings.rate * 1000) {
+    return;
+  }
+  
+  for (int i = 0; i < strip.numPixels(); i++) {
+    strip.setPixelColor(i, (random(100) > 70) ? StripUtils().getColor(settings.brightness, 255, 255, 255) : 0);
+  }
+  strip.show();
+  m = millis();
+}
+
+//============ ============ Sparkle ============ ============ 
+
+void hmSparkleLoop() {
+  if (millis() < m + 1000 - settings.rate * 1000) {
+    float fadeRate = 0.08 * settings.rate;
+    for (int i = 0; i < strip.numPixels(); i++) {
+          strip.setPixelColor(i, StripUtils().getIntermediateColor(strip.getPixelColor(i), 0, fadeRate));
+    }
+    strip.show();
+    return;
+  }
+  
+  for (int i = 0; i < strip.numPixels(); i++) {
+    if (random(100) > 70) {
+      strip.setPixelColor(i, StripUtils().getWheelColor(settings.brightness, random(255)));
+    }
+
+  }
+  strip.show();
+  m = millis();
+}
+
+
+
 
 //============ ============  AUDIO ============ ============ 
+//============ ============  AUDIO ============ ============ 
+//============ ============  AUDIO ============ ============ 
+//============ ============  AUDIO ============ ============ 
+//============ ============  AUDIO ============ ============ 
 
-#define  IR_AUDIO  5 // ADC channel to capture
+
+
+#define IR_AUDIO 5 // ADC channel to capture
 
 #define BUCKETS 4
 
@@ -396,6 +444,7 @@ int      incomingByte;
 
 
 const int sdvig = 32768; //DC bias of the ADC, approxim +2.5V. 
+int minima[BUCKETS] = {1023,1023,1023,1023};
 int maxima[BUCKETS] = {0,0,0,0};
 const float decay = 0.9;  //AGC time constant. 
                       //AGC affects visual display only, no AGC on analog part of the system
@@ -460,6 +509,7 @@ void calcMagnitude(short n) {
      fx[i] = sqrt((long)fx[i] * (long)fx[i] + (long)fx[i+N/2] * (long)fx[i+N/2]);   
      //maximum = max(50, max(maximum, fx[i]));
      maxima[i] = max(minMax, max((int)(maxima[i] * decay), fx[i]));
+     minima[i] = max(1, min((int)(minima[i]*(1-decay)), fx[i]));
    }
   
 }
@@ -488,11 +538,17 @@ void hmAudioEffect2() {
   calcMagnitude(BUCKETS + 1);
  
    for (short i = 0; i < 18; i++) {
-    /* Serial.print(fx[1], DEC);
+     Serial.print(fx[1], DEC);
      Serial.print("-");
-     Serial.print(maxima[0]);*/
+     Serial.print(minima[1]);
+     Serial.print("-");
+     Serial.print(maxima[1]);
+     Serial.println("");
+     
+     
      short ix = i % BUCKETS + 1;
-     int percentage = 100 * fx[ix] / maxima[ix];
+//     int percentage = 100 * fx[ix] / maxima[ix];
+    int percentage = 100 * (fx[ix] - minima[ix]) / (maxima[ix] - minima[ix]);
 
      for (short y = 0; y < 5; y++) {
        uint32_t col = percentage > (y * 20) ? 0 : StripUtils().getWheelColor(settings.brightness, map(constrain(percentage, 0, y * 20), 0, y * 20, hmk, hmk + 64));

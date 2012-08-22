@@ -2,6 +2,9 @@
 #include <ffft.h>
 
 
+#define ENCODER_OPTIMIZE_INTERRUPTS
+
+
 
 #include "SPI.h"
 #include "LPD8806.h"
@@ -12,11 +15,10 @@
 #include "Writer.h"
 
 #define NUM_LIGHTS 96
-#define NUM_AUDIO_MODES 2
 
 //----------- PINS ----------- 
 
-const short encPinA = 2;
+const short encPinA = 2; 
 const short encPinB = 3;
 
 const short dataPin  = 6;    // white wire on Adafruit Pixels
@@ -43,7 +45,7 @@ Encoder modeEnc(encPinA, encPinB);
 
 
 
-#define NUM_MODES 10
+#define NUM_MODES 11
 
 //  init - loop - shutdown
 
@@ -58,13 +60,18 @@ void (*modes[NUM_MODES][3])(void) = {
   { NULL, &hmSolidLoop, NULL},
   { NULL, &hmWhiteSparkleLoop, NULL},
   { NULL, &hmSparkleLoop, NULL},
+  { NULL, &hmWaves, NULL},
   { &hmMatricesInit, &hmMatricesLoop, NULL }
 
 };
 
+
+#define NUM_AUDIO_MODES 3
+
 void (*audioModes[NUM_AUDIO_MODES])(void) = {
   &hmAudioEffect2,
-  &hmAudioEffect3
+  &hmAudioEffect3,
+  hmAudioSparkle
 };
 
 
@@ -415,6 +422,22 @@ void hmSparkleLoop() {
 }
 
 
+//============ ============ Wave ============ ============ 
+
+void hmWaves() {
+  if (millis() < m + 1000 - settings.rate * 1000) {
+    return;
+  }
+  
+  for (int i = 0; i < strip.numPixels(); i++) {
+    strip.setPixelColor(i, ((i + hmj) % 9 == (i / 18) || (i + hmj) % 9 == 9 - (i / 18)) ? StripUtils().getWheelColor(settings.brightness, random(128)) : 0);
+  }
+  strip.show();
+  
+  hmj++;
+  m = millis();
+}
+
 
 
 //============ ============  AUDIO ============ ============ 
@@ -575,6 +598,38 @@ void hmAudioEffect3() {
   strip.show();
   
 }
+
+
+
+void hmAudioSparkle() {
+ 
+  calcMagnitude(BUCKETS);
+
+  int percentage = 100 * (fx[1] - minima[1]) / (maxima[1] - minima[1]);
+  
+  
+  //if (millis() < m + 1000 -  settings.rate * 1000) {
+    float fadeRate = 0.08 * settings.rate;
+    for (int i = 0; i < strip.numPixels(); i++) {
+          strip.setPixelColor(i, StripUtils().getIntermediateColor(strip.getPixelColor(i), 0, fadeRate));
+    }
+    strip.show();
+    return;
+  //}
+  
+  
+  
+  
+  for (int i = 0; i < strip.numPixels(); i++) {
+    if (random(100) > (percentage * settings.rate)) {
+      strip.setPixelColor(i, StripUtils().getWheelColor(settings.brightness, random(255)));
+    }
+
+  }
+  strip.show();
+  m = millis(); 
+}
+
 
 
 

@@ -45,23 +45,23 @@ Encoder modeEnc(encPinA, encPinB);
 
 
 
-#define NUM_MODES 11
+#define NUM_MODES 5
 
 //  init - loop - shutdown
 
 void (*modes[NUM_MODES][3])(void) = { 
   //{ &hmAudioInit, &hmAudioLoop, &hmAudioShutdown}, 
   { &hmRainbowInit, &hmRainbowLoop, NULL } ,
-  { &hmSidewaysRainbowInit, &hmSidewaysRainbowLoop, NULL } ,
-  { &hmFullRainbowInit, &hmFullRainbowLoop, NULL },
-  { NULL, &hmRandomSquaresLoop, NULL},
+  //{ &hmSidewaysRainbowInit, &hmSidewaysRainbowLoop, NULL } ,
+  //{ &hmFullRainbowInit, &hmFullRainbowLoop, NULL },
+  //{ NULL, &hmRandomSquaresLoop, NULL},
   { NULL, &hmRandomStripesLoop, NULL},
-  { &hmRotatingStripeInit, &hmRotatingStripeLoop, NULL},
-  { NULL, &hmSolidLoop, NULL},
+  //{ &hmRotatingStripeInit, &hmRotatingStripeLoop, NULL},
+  //{ NULL, &hmSolidLoop, NULL},
   { NULL, &hmWhiteSparkleLoop, NULL},
   { NULL, &hmSparkleLoop, NULL},
   { NULL, &hmWaves, NULL},
-  { &hmMatricesInit, &hmMatricesLoop, NULL }
+  //{ &hmMatricesInit, &hmMatricesLoop, NULL }
 
 };
 
@@ -95,6 +95,11 @@ void setup() {
   
   strip.begin();
   reset();
+  
+  randomSeed(analogRead(A1));
+  
+  mode = random(NUM_MODES);
+  
 
   if (modes[mode][0] != NULL) {
     modes[mode][0]();
